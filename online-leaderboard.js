@@ -2,7 +2,7 @@ const ONLINE_LEADERBOARD = {
     SUPABASE_URL: 'https://ezopsdhrggolwffbwknb.supabase.co',
     SUPABASE_KEY: 'sb_publishable_5h0aollwcdkBZr3XxN4qCw_n4npr9X0',
 
-    // 1. Genera o recupera il codice invisibile (Usa la chiave originale per non perdere i record di ieri!)
+    // 1. Genera o recupera il codice invisibile del dispositivo
     _getOrCreateUserToken: function() {
         let token = localStorage.getItem('wordman_device_token');
         if (!token) {
@@ -12,7 +12,7 @@ const ONLINE_LEADERBOARD = {
         return token;
     },
 
-    // 2. Invio del punteggio (Il sistema anti-doppioni di ieri)
+    // 2. Invio del punteggio con Log degli errori dettagliato
     submitScore: async function(username, score) {
         const token = this._getOrCreateUserToken();
         const checkUrl = `${this.SUPABASE_URL}/rest/v1/leaderboard?user_token=eq.${token}`;
@@ -26,7 +26,11 @@ const ONLINE_LEADERBOARD = {
                 }
             });
 
-            if (!checkResponse.ok) return null;
+            if (!checkResponse.ok) {
+                const errText = await checkResponse.text();
+                console.error("❌ Supabase - Errore nel controllo record esistente:", checkResponse.status, errText);
+                return null;
+            }
             const existingRecords = await checkResponse.json();
 
             // Se questo specifico dispositivo ha già una riga
@@ -43,7 +47,13 @@ const ONLINE_LEADERBOARD = {
                         },
                         body: JSON.stringify({ username: username, score: score })
                     });
-                    return updateResponse.ok ? await updateResponse.json() : null;
+                    
+                    if (!updateResponse.ok) {
+                        const errText = await updateResponse.text();
+                        console.error("❌ Supabase - Errore durante l'UPDATE del record:", updateResponse.status, errText);
+                        return null;
+                    }
+                    return await updateResponse.json();
                 } else {
                     if (username !== oldRecord.username) {
                         const updateUrl = `${this.SUPABASE_URL}/rest/v1/leaderboard?user_token=eq.${token}`;
@@ -67,35 +77,45 @@ const ONLINE_LEADERBOARD = {
                     },
                     body: JSON.stringify({ username: username, score: score, user_token: token })
                 });
-                return insertResponse.ok ? await insertResponse.json() : null;
+                
+                if (!insertResponse.ok) {
+                    const errText = await insertResponse.text();
+                    console.error("❌ Supabase - Errore durante l'INSERT del record:", insertResponse.status, errText);
+                    return null;
+                }
+                return await insertResponse.json();
             }
 
         } catch (error) {
-            console.error("Errore di rete durante l'operazione:", error);
+            console.error("💥 Errore di rete critico durante submitScore:", error);
             return null;
         }
     },
 
-    // 3. Calcolo della posizione da mostrare in alto a destra nel gioco
+    // 3. Calcolo della posizione in tempo reale (Rank)
     calculateRank: async function(myScore) {
-        const url = `${this.SUPABASE_URL}/rest/v1/leaderboard?score=gt.${myScore}&select=count`;
+        const url = `${this.SUPABASE_URL}/rest/v1/leaderboard?score=gt.${myScore}&select=score`;
         try {
             const response = await fetch(url, {
                 headers: {
                     'apikey': this.SUPABASE_KEY,
-                    'Authorization': `Bearer ${this.SUPABASE_KEY}`,
-                    'Range-Unit': 'items'
+                    'Authorization': `Bearer ${this.SUPABASE_KEY}`
                 }
             });
-            if (!response.ok) return 1;
+            if (!response.ok) {
+                const errText = await response.text();
+                console.error("❌ Supabase - Errore in calculateRank:", response.status, errText);
+                return '--';
+            }
             const data = await response.json();
-            return (data.length > 0 ? data[0].count : 0) + 1;
+            return (Array.isArray(data) ? data.length : 0) + 1;
         } catch (error) {
-            return 1;
+            console.error("💥 Errore di rete in calculateRank:", error);
+            return '--';
         }
     },
 
-    // 4. Scarica tutta la classifica per riempire la nuova pagina leaderboard.html
+    // 4. Scarica tutta la classifica per riempire leaderboard.html
     getLeaderboardData: async function() {
         const myToken = this._getOrCreateUserToken();
         const url = `${this.SUPABASE_URL}/rest/v1/leaderboard?order=score.desc`;
@@ -109,7 +129,11 @@ const ONLINE_LEADERBOARD = {
                 }
             });
 
-            if (!response.ok) return null;
+            if (!response.ok) {
+                const errText = await response.text();
+                console.error("❌ Supabase - Errore in getLeaderboardData:", response.status, errText);
+                return null;
+            }
             const allRecords = await response.json();
 
             let top10 = [];
@@ -140,7 +164,7 @@ const ONLINE_LEADERBOARD = {
             };
 
         } catch (error) {
-            console.error("Errore nel caricamento della classifica:", error);
+            console.error("💥 Errore nel caricamento della classifica:", error);
             return null;
         }
     }

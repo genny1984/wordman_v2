@@ -1,6 +1,7 @@
 /**
  * WORDMAN - MOTORE UNIFICATO ARCADE
  * Fix definitivo per lettura diretta del modulo SCORING e stabilità totale viewport mobile
+ * + INTEGRAZIONE MODALITÀ DEBUG SU TUTTE LE MODALITÀ
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -191,15 +192,38 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 7. CORREZIONE VERIFICA RIGA CON LOGICA DI SCORING DIRETTA
+    // 7. VERIFICA RIGA CON INTEGRATO SISTEMA DI DEBUG INTERCETTO
     function checkRow() {
+        // --- FUNZIONE DI DEBUG APPLICATA A TUTTE LE MODALITÀ ---
+        let currentTypedString = "";
+        const startIndex = currentAttempt * WORD_LENGTH;
+        for (let i = 0; i < currentTile; i++) {
+            const tile = document.getElementById(`tile-${startIndex + i}`);
+            if (tile && tile.innerText) currentTypedString += tile.innerText;
+        }
+        currentTypedString = currentTypedString.trim().toUpperCase();
+
+        if (currentTypedString === "DEBUG") {
+            // Mostra la parola segreta nei messaggi di gioco
+            showMessage(`🔍 [DEBUG] Parola segreta: ${SECRET_WORD}`);
+            
+            // Svuota istantaneamente le caselle digitate per permettere il proseguimento del test
+            for (let i = 0; i < currentTile; i++) {
+                const tile = document.getElementById(`tile-${startIndex + i}`);
+                if (tile) tile.innerText = "";
+            }
+            currentTile = 0;
+            mobileInput.value = "X"; // Reset input mobile
+            return; // Interrompe l'esecuzione così non valida la riga come tentativo fallito
+        }
+        // ------------------------------------------------------
+
         if (currentTile !== WORD_LENGTH) {
             showMessage(`Inserisci ${WORD_LENGTH} lettere!`); 
             return;
         }
 
         let guess = "";
-        const startIndex = currentAttempt * WORD_LENGTH;
         for (let i = 0; i < WORD_LENGTH; i++) {
             const tile = document.getElementById(`tile-${startIndex + i}`);
             if (tile && tile.innerText) guess += tile.innerText;
@@ -224,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // LETTURA DIRETTA DELLA VARIABILE GLOBALE SCORING (Supera il limite del blocco const)
+        // LETTURA DIRETTA DELLA VARIABILE GLOBALE SCORING
         let rowPoints = 0;
         if (typeof SCORING !== "undefined" && typeof SCORING.calculateRowPoints === "function") {
             rowPoints = SCORING.calculateRowPoints(tileStatuses, WORD_LENGTH);

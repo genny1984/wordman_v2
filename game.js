@@ -1,6 +1,6 @@
 /**
  * WORDMAN - MOTORE UNIFICATO ARCADE
- * Integrazione totale di controlli di lunghezza rigidi, anti-duplicati e scoring.js
+ * Fix definitivo focus mobile senza salti di visualizzazione e integrazione scoring.js
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -11,11 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const WORD_LENGTH = parseInt(params.get('len')) || 5; 
     const MAX_ATTEMPTS = 6;
 
-    // Dizionari ampliati di Fallback (vengono usati se words.js fallisce o è vuoto)
-    const EASY_WORDS = (window.EASY_WORDS && window.EASY_WORDS.length > 0) ? window.EASY_WORDS : ["TRENO", "GATTO", "PIZZA", "CORSA", "FUOCO", "MONDO", "TASTO", "LIBRO", "VERDE", "FIORE", "ACQUA", "AMICO", "ANIMA", "AEREO", "BARCA", "BOCCA", "BRAVO", "CAFFE", "CANTO", "CAPRA", "CARTA", "CERVO", "CIELO", "CLIMA", "COLPO", "COSTA", "CUORE", "DENTE", "DISCO", "DOLCE", "DONNA", "FANGO", "FESTA", "FIUME", "FORMA", "FORTE", "FUSTO", "GAMBA", "GIOCO", "GONNA", "GRANO", "GRAVE", "GUIDA", "GUSTO", "ISOLA", "LARGO", "LATTE", "LEGNO", "LENTO", "LINEA", "PADRE", "PANE", "PAESE", "PELLE", "PENNA", "PIANO", "PIEDE", "PORTO", "POSTO", "PRATO", "PRIMA", "PUNTO", "RADIO", "RAGNO", "REGNO", "ROSSO", "RUOTA", "SCALA", "SOGNO", "SOLDI", "SPINA", "SUOLO", "TASCA", "TERRA", "TESTA", "TORRE", "VENTO", "VETRO", "VOLTO", "ZAINO", "ZUPPA", "CORDA", "PORTA", "CREMA", "TASSE", "SCAFO", "PARCO", "CORPO", "PRONO", "ORAFO"];
-    const HARD_WORDS = (window.HARD_WORDS && window.HARD_WORDS.length > 0) ? window.HARD_WORDS : ["ALBERO", "LAVORO", "STRADA", "CHIESA", "PIANTO", "SABBIA", "STORIA", "SANGUE", "SCARPA", "SCUOLA", "GIORNO", "TEATRO", "POESIA", "FRUTTO", "TAVOLO", "STADIO", "SVOLTA", "PATRIA", "FUTURO", "MEDICO", "NATURA", "PREZZO", "PIETRA", "BLOCCO", "CUGINO", "DOTTOR", "BRUTTO", "FREDDO", "PULITO", "CHIARO", "OSCURO", "FELICE", "STANCO", "PRONTO", "ONESTO", "SICURO", "ANANAS", "AVVISO", "AZIENDA", "ANELLO", "CACCIA", "CATENA", "CLASSE", "CUCINA", "DIVISA", "DOCCIA", "DOMANI", "ESTATE", "FAVOLA", "FEBBRE", "FRECCIA", "FRONTE", "GELATO", "GIACCA", "GIRAFFA", "GOMITO", "GRAZIA", "GUANTO", "LABBRO", "LANCIA", "MOSTRO", "MOTORE", "NUMERO", "PAGINA", "PAROLA", "PATATA", "PECORA", "PILOTA", "POSTER", "PRANZO", "QUADRO", "REGINA", "SABATO", "SALUTE", "SAPONE", "SATINO", "SCOPA", "SECOLO", "SIRENA", "SPEZIA", "SAPORE", "STAMPA", "STELLA", "TENDA", "TIGRE", "TIMONE", "TOMBA", "VIAGGIO", "SCONTO", "STREGA", "BRONZO", "BIANCO", "BIONDO", "DIVANO", "FASCIA", "FOGLIA", "SGUARDO", "CANDELA", "NUVOLA"];
+    // Dizionari Fallback
+    const EASY_WORDS = (window.EASY_WORDS && window.EASY_WORDS.length > 0) ? window.EASY_WORDS : ["TRENO", "GATTO", "PIZZA", "CORSA", "FUOCO", "MONDO", "TASTO", "LIBRO", "VERDE", "FIORE"];
+    const HARD_WORDS = (window.HARD_WORDS && window.HARD_WORDS.length > 0) ? window.HARD_WORDS : ["ALBERO", "LAVORO", "STRADA", "CHIESA", "PIANTO", "SABBIA", "STORIA", "SANGUE"];
 
-    // Registro delle parole estratte in questa sessione (Evita i duplicati)
     const usedWords = new Set();
 
     // 2. STATO DEL GIOCO
@@ -26,11 +25,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let streakCount = 0;
     let isGameOverState = false;
 
-    // Configurazione Timer
     let timeLeft = 60;
     let timerInterval = null;
 
-    // 3. ELEMENTI INTERFACCIA DOM
+    // 3. ELEMENTI DOM
     const board = document.getElementById("game-board");
     const canvas = document.getElementById("hangman");
     const ctx = canvas.getContext("2d");
@@ -48,25 +46,34 @@ document.addEventListener('DOMContentLoaded', () => {
         timerWrapper.classList.remove("hidden");
     }
 
-    // 4. INPUT MOBILE INVISIBILE
+    // 4. FIX MOBILE: CREAZIONE INPUT INVISIBILE ANTI-SCROLL (FONT A 16px PREVIENE ZOOM ED AUTO-SCROLL DI IOS)
     const mobileInput = document.createElement("input");
     mobileInput.type = "text";
     mobileInput.setAttribute("inputmode", "text");
     mobileInput.setAttribute("autocomplete", "off");
     mobileInput.setAttribute("autocapitalize", "characters");
     mobileInput.setAttribute("spellcheck", "false");
+    
+    // Posizionamento strategico al centro dello schermo fisso per evitare scroll avversi
     mobileInput.style.position = "fixed";
-    mobileInput.style.top = "0"; mobileInput.style.left = "0";
-    mobileInput.style.opacity = "0"; mobileInput.style.pointerEvents = "none";
+    mobileInput.style.top = "30%"; 
+    mobileInput.style.left = "50%";
+    mobileInput.style.transform = "translate(-50%, -50%)";
+    mobileInput.style.width = "1px"; 
+    mobileInput.style.height = "1px";
+    mobileInput.style.opacity = "0.01"; 
+    mobileInput.style.fontSize = "16px"; // 16px blocca nativamente il salto dello schermo su iOS Safari!
     mobileInput.style.zIndex = "-1000";
     document.body.appendChild(mobileInput);
     mobileInput.value = "X";
 
     function focusMobileInput() {
         if (!restartBtn.classList.contains("hidden")) return;
+        if (document.activeElement === document.getElementById("leaderboard-username")) return;
         mobileInput.focus({ preventScroll: true });
     }
 
+    // Cliccando sulla griglia o sullo sfondo riprendi il focus senza saltare
     document.addEventListener("click", (e) => {
         if (e.target.id === "leaderboard-username" || e.target.closest("button")) return;
         focusMobileInput();
@@ -102,7 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (key === "ENTER") restartBtn.click();
             return;
         }
-
         if (currentAttempt >= MAX_ATTEMPTS || (GAME_MODE === 'timer' && timeLeft <= 0)) return;
 
         if (key.length === 1 && key >= "A" && key <= "Z") addLetter(key);
@@ -110,41 +116,29 @@ document.addEventListener('DOMContentLoaded', () => {
         if (key === "ENTER") checkRow();
     });
 
-    // 5. SELEZIONE PAROLA CON CONTROLLI RIGIDI
+    // 5. SELEZIONE PAROLA RIGIDA
     function getValidSecretWord() {
-        // Seleziona il pool corretto basandosi sulla configurazione passata
         let basePool = (WORD_LENGTH === 5) ? EASY_WORDS : HARD_WORDS;
-        
-        // REGOLA 1: La parola deve avere ESATTAMENTE la lunghezza corretta impostata nell'URL
         let filteredPool = basePool.filter(word => word.trim().length === WORD_LENGTH);
 
         if (filteredPool.length === 0) {
-            console.error(`Errore critico: Nessuna parola di lunghezza ${WORD_LENGTH} trovata nel dizionario.`);
             return (WORD_LENGTH === 5) ? "TRENO" : "ALBERO"; 
         }
 
-        // REGOLA 2: La parola non deve essere già uscita in questa partita/sessione
         let availablePool = filteredPool.filter(word => !usedWords.has(word.toUpperCase()));
-
-        // Se le parole del pool valido sono esaurite tutte, pulisci lo storico per non bloccare il gioco
         if (availablePool.length === 0) {
             usedWords.clear();
             availablePool = filteredPool;
         }
 
-        // Scegli una parola a caso dal pool filtrato
         let chosenWord = availablePool[Math.floor(Math.random() * availablePool.length)].toUpperCase();
-        
-        // Aggiungi al registro dei duplicati
         usedWords.add(chosenWord);
         return chosenWord;
     }
 
-    // 6. AZIONI DELLA LOGICA DI GIOCO
+    // 6. LOGICA ROUND
     function startNewRound() {
         SECRET_WORD = getValidSecretWord();
-        console.log("Parola Segreta Validata:", SECRET_WORD);
-
         currentAttempt = 0;
         currentTile = 0;
         showMessage("");
@@ -152,7 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
         restartBtn.classList.add("hidden");
         globalSaveContainer.classList.add("hidden");
 
-        // Rigenerazione Griglia basata su WORD_LENGTH
         board.style.setProperty('--cols', WORD_LENGTH);
         board.innerHTML = "";
         for (let i = 0; i < MAX_ATTEMPTS * WORD_LENGTH; i++) {
@@ -162,7 +155,6 @@ document.addEventListener('DOMContentLoaded', () => {
             board.appendChild(tile);
         }
 
-        // Reset Grafica Impiccato
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.beginPath();
         ctx.moveTo(10, 240); ctx.lineTo(150, 240);
@@ -172,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.stroke();
 
         if (GAME_MODE === 'timer') startTimer();
-        focusMobileInput();
+        setTimeout(focusMobileInput, 100);
     }
 
     function addLetter(letter) {
@@ -191,9 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentTile--;
             const index = (currentAttempt * WORD_LENGTH) + currentTile;
             const tile = document.getElementById(`tile-${index}`);
-            if (tile) {
-                tile.innerText = "";
-            }
+            if (tile) tile.innerText = "";
         }
     }
 
@@ -214,14 +204,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let tileStatuses = new Array(WORD_LENGTH).fill("absent");
         let secretLettersRemaining = SECRET_WORD.split("");
 
-        // Controllo Lettere Esatte (Verdi)
         for (let i = 0; i < WORD_LENGTH; i++) {
             if (guess[i] === SECRET_WORD[i]) {
                 tileStatuses[i] = "correct"; 
                 secretLettersRemaining[i] = null;
             }
         }
-        // Controllo Lettere Presenti (Gialle)
         for (let i = 0; i < WORD_LENGTH; i++) {
             if (tileStatuses[i] === "correct") continue;
             const idx = secretLettersRemaining.indexOf(guess[i]);
@@ -231,71 +219,69 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // APPLICAZIONE LOGICA SCORING.JS RAFFINATA
-        let roundPoints = 0;
+        // CHIAMATA SINFONICA SCORING.JS CORRETTA
+        let rowPoints = 0;
         if (window.SCORING && typeof window.SCORING.calculateRowPoints === "function") {
-            roundPoints += window.SCORING.calculateRowPoints(tileStatuses, WORD_LENGTH);
+            rowPoints = window.SCORING.calculateRowPoints(tileStatuses, WORD_LENGTH);
         } else {
             tileStatuses.forEach(s => { 
-                if(s === 'correct') roundPoints += 20; 
-                if(s === 'present') roundPoints += 10; 
+                if(s === 'correct') rowPoints += 20; 
+                if(s === 'present') rowPoints += 10; 
             });
-            if (WORD_LENGTH === 6) roundPoints = Math.round(roundPoints * 1.5);
+            if (WORD_LENGTH === 6) rowPoints = Math.round(rowPoints * 1.5);
         }
+        
+        totalScore += rowPoints;
 
-        // Applica classi grafiche della riga
         for (let i = 0; i < WORD_LENGTH; i++) {
             const tile = document.getElementById(`tile-${startIndex + i}`);
             if (tile) tile.classList.add(tileStatuses[i]);
         }
 
-        // CASO DI VITTORIA
+        // VITTORIA ROUND
         if (guess === SECRET_WORD) {
             if (GAME_MODE === 'timer') clearInterval(timerInterval);
 
-            // Applica il bonus di vittoria raffinato da scoring.js
+            let victoryBonus = 0;
             if (window.SCORING && typeof window.SCORING.calculateVictoryBonus === "function") {
-                const isTimer = (GAME_MODE === 'timer');
-                roundPoints += window.SCORING.calculateVictoryBonus(currentAttempt, WORD_LENGTH, isTimer, timeLeft);
+                victoryBonus = window.SCORING.calculateVictoryBonus(currentAttempt, WORD_LENGTH, (GAME_MODE === 'timer'), timeLeft);
             }
-
-            totalScore += roundPoints;
+            
+            totalScore += victoryBonus;
             streakCount++; 
             
             currentScoreEl.innerText = totalScore;
             currentStreakEl.innerText = streakCount;
 
             const li = document.createElement("li");
-            const timeTag = (GAME_MODE === 'timer') ? ` (${timeLeft}s)` : "";
-            li.innerText = `✔️ ${SECRET_WORD} +${roundPoints}pt${timeTag}`;
+            li.innerHTML = `✔️ <span style="color:#538d4e;">${SECRET_WORD}</span> +${rowPoints + victoryBonus}pt`;
             wordsListEl.prepend(li);
 
-            showMessage(`🎉 Esatto! (+${roundPoints}pt)`);
+            showMessage(`🎉 ROUND SUPERATO!`);
             isGameOverState = false;
-            restartBtn.innerText = "Continua";
+            restartBtn.innerText = "Prossima Parola";
             restartBtn.classList.remove("hidden");
             return;
         }
 
-        // Disegna pezzo dell'impiccato se fallito
         drawHangman(currentAttempt);
         currentAttempt++;
         currentTile = 0;
 
-        // CASO DI SCONFITTA (Fine tentativi)
+        currentScoreEl.innerText = totalScore;
+
+        // SCONFITTA SESSIONE
         if (currentAttempt === MAX_ATTEMPTS) {
             if (GAME_MODE === 'timer') clearInterval(timerInterval);
-            showMessage(`💥 IMPICCATO! Era: ${SECRET_WORD}`);
+            showMessage(`💥 FINITO! Era: ${SECRET_WORD}`);
             triggerGameOver();
         }
     }
 
-    // 7. TIMER DI GIOCO
     function startTimer() {
         clearInterval(timerInterval);
         timeLeft = 60;
         updateTimerUI();
-        
         timerInterval = setInterval(() => {
             if (!restartBtn.classList.contains("hidden")) return clearInterval(timerInterval);
             timeLeft--;
@@ -317,7 +303,6 @@ document.addEventListener('DOMContentLoaded', () => {
         else timerBar.style.backgroundColor = "#1dd1a1";
     }
 
-    // 8. CONCLUSIONE DELLA SESSIONE
     function triggerGameOver() {
         isGameOverState = true;
         restartBtn.innerText = "Nuova Partita";
@@ -334,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
         totalScore = 0; streakCount = 0;
         currentScoreEl.innerText = "0"; currentStreakEl.innerText = "0";
         wordsListEl.innerHTML = "";
-        usedWords.clear(); // Resetta lo storico duplicati per una nuova sessione completa
+        usedWords.clear();
     }
 
     restartBtn.addEventListener("click", () => {
@@ -357,7 +342,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showMessage(text) { messageEl.innerText = text; }
 
-    // 9. CLASSIFICA GLOBAL SUPABASE
     const btnSubmitGlobal = document.getElementById("btn-submit-global");
     if (btnSubmitGlobal) {
         btnSubmitGlobal.addEventListener("click", async () => {
@@ -370,11 +354,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (window.ONLINE_LEADERBOARD) {
                 const res = await window.ONLINE_LEADERBOARD.submitScore(username, totalScore);
                 if (res) {
-                    showMessage(`🌍 Record inviato con successo!`);
-                    setTimeout(() => { window.location.href = "leaderboard.html"; }, 1200);
+                    showMessage(`🌍 Record registrato!`);
+                    setTimeout(() => { window.location.href = "leaderboard.html"; }, 1000);
                 } else {
-                    showMessage(`❌ Errore di connessione.`);
-                    btnSubmitGlobal.innerText = "INVIA";
+                    showMessage(`❌ Errore di rete.`);
+                    btnSubmitGlobal.innerText = "INVIA RECORD";
                     btnSubmitGlobal.disabled = false;
                 }
             }

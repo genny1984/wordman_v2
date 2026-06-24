@@ -18,7 +18,7 @@ body {
     padding: 20px;
 }
 
-h1, h2 {
+h1, h2, h3 {
     font-family: 'VT323', monospace;
     text-transform: uppercase;
 }
@@ -26,17 +26,18 @@ h1, h2 {
 .main-title {
     font-size: 5rem;
     color: #538d4e;
-    margin: 40px 0;
-    text-shadow: 3px 3px 0px #000;
+    margin: 30px 0;
+    text-shadow: 4px 4px 0px #000;
+    text-align: center;
 }
 
-/* Contenitori Layout */
+/* Layout Contenitori */
 .top-bar-container {
     width: 100%;
-    max-width: 600px;
-    margin: 0 auto 15px auto;
+    max-width: 400px;
+    margin: 0 auto 20px auto;
     display: flex;
-    justify-content: flex-start;
+    justify-content: center;
 }
 
 #game-layout-wrapper {
@@ -68,7 +69,7 @@ h1, h2 {
 .tile {
     width: 60px;
     height: 60px;
-    border: 2px solid #3a3a3c;
+    border: 3px solid #3a3a3c;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -83,41 +84,45 @@ h1, h2 {
 .tile.present { background-color: #b59f3b; border-color: #b59f3b; color: white; }
 .tile.absent  { background-color: #3a3a3c; border-color: #3a3a3c; color: white; }
 
-/* Pulsanti stile Arcade */
-button {
-    font-family: 'VT323', monospace;
-    text-transform: uppercase;
-    transition: all 0.2s ease;
+/* Pulsanti Arcade Standardizzati */
+.menu-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+    max-width: 400px;
 }
 
 .main-btn, .secondary-btn, .rank-btn {
-    padding: 15px;
+    width: 100%;
+    padding: 12px 20px;
     font-size: 1.8rem;
+    font-family: 'VT323', monospace;
+    text-transform: uppercase;
     border-radius: 8px;
     border: 3px solid #538d4e;
+    background: #1e1e1f;
+    color: white;
     cursor: pointer;
     text-align: center;
+    box-shadow: 4px 4px 0px #000;
+    transition: all 0.15s ease;
 }
 
-.main-btn { background: #1e1e1f; color: white; }
-.main-btn:hover { background: #538d4e; color: #121213; font-weight: bold; }
-
-/* Pulsante Indietro Rinnovato */
-.menu-back-btn {
-    width: auto;
-    min-width: 200px;
-    font-size: 1.4rem;
-    padding: 8px 16px;
-    border: 3px solid #538d4e;
-    background: #1e1e1f;
-    box-shadow: 3px 3px 0px #000;
+.main-btn:hover, .secondary-btn:hover, .rank-btn:hover {
+    background: #538d4e;
+    color: #121213;
+    font-weight: bold;
+    box-shadow: 2px 2px 0px #000;
+    transform: translateY(2px);
 }
 
-.secondary-btn { background: #333; color: #ccc; border: none; }
-.secondary-btn:hover { background: #555; }
+.secondary-btn { border-color: #ff9f43; }
+.secondary-btn:hover { background: #ff9f43; }
 
-.rank-btn { background: #538d4e; color: white; border: none; font-weight: bold; }
-.rank-btn:hover { background: #6aaa64; box-shadow: 0 0 10px #538d4e; }
+.rank-btn { border-color: #b59f3b; }
+.rank-btn:hover { background: #b59f3b; }
 
 /* Timer */
 #timer-wrapper {
@@ -127,7 +132,8 @@ button {
     background: #222;
     border-radius: 8px;
     overflow: hidden;
-    border: 2px solid #538d4e;
+    border: 3px solid #538d4e;
+    box-shadow: 3px 3px 0px #000;
 }
 #timer-bar {
     height: 20px;
@@ -138,69 +144,70 @@ button {
 #timer-text {
     text-align: center;
     margin-top: 5px;
+    font-size: 1.4rem;
     font-weight: bold;
     padding-bottom: 5px;
 }
 
-/* Modale */
+/* Pannello Il Calderone */
+.calderone-container {
+    background: #1e1e1f;
+    padding: 15px;
+    border-radius: 8px;
+    border: 3px dashed #538d4e;
+    text-align: center;
+    min-width: 250px;
+    box-shadow: 4px 4px 0px #000;
+}
+.score-total, .streak-total { font-size: 1.8rem; margin-top: 5px; }
+#words-list { list-style: none; margin-top: 10px; font-size: 1.4rem; text-align: left; padding-left: 10px;}
+
+/* Modale di Salvataggio Record */
 #global-save-container {
     margin: 20px auto;
     max-width: 400px;
-    background: #222;
-    padding: 15px;
+    background: #1e1e1f;
+    padding: 20px;
     border-radius: 8px;
-    border: 2px solid #538d4e;
+    border: 3px solid #b59f3b;
     text-align: center;
+    box-shadow: 5px 5px 0px #000;
 }
 #leaderboard-username {
     padding: 10px;
-    width: 80%;
-    border-radius: 4px;
-    border: 1px solid #555;
+    width: 85%;
+    border-radius: 6px;
+    border: 2px solid #555;
     background: #111;
     color: white;
     text-align: center;
     text-transform: uppercase;
     font-family: 'VT323', monospace;
-    font-size: 1.2rem;
-}
-#btn-submit-global {
-    padding: 10px 20px;
-    background: #538d4e;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-family: 'VT323', monospace;
-    font-size: 1.5rem;
-    margin-top: 15px;
-    text-transform: uppercase;
+    font-size: 1.6rem;
+    margin-bottom: 15px;
 }
 
 #message {
-    margin-top: 20px;
-    font-size: 1.5rem;
+    margin-top: 15px;
+    font-size: 1.8rem;
     color: #ff9f43;
     text-align: center;
-    height: 30px;
+    height: 35px;
+    text-shadow: 2px 2px 0px #000;
 }
 
-#restart-btn {
-    max-width: 300px;
-    margin: 20px auto 0 auto;
-    display: block;
+/* Contenitore Istruzioni */
+.instructions-box {
+    background: #1e1e1f;
+    border: 3px solid #538d4e;
+    border-radius: 8px;
+    padding: 25px;
+    max-width: 600px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 5px 5px 0px #000;
+    font-size: 1.6rem;
+    line-height: 1.5;
 }
 
 .hidden { display: none !important; }
-
-/* Il Calderone */
-.calderone-container {
-    background: #1e1e1f;
-    padding: 15px;
-    border-radius: 8px;
-    border: 2px dashed #538d4e;
-    text-align: center;
-    min-width: 250px;
-}
-.score-total, .streak-total { font-size: 1.5rem; margin-top: 5px; }
-#words-list { list-style: none; margin-top: 10px; font-size: 1.2rem; }

@@ -8,8 +8,9 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    
     <div class="top-bar-container">
-        <button onclick="window.location.href='index.html'" class="main-btn menu-back-btn">⬅️ Menu Principale</button>
+        <button onclick="window.location.href='index.html'" class="main-btn">⬅️ Menu Principale</button>
     </div>
        
     <div id="game-container">
@@ -23,9 +24,9 @@
             
             <div id="left-column">
                 <div class="calderone-container">
-                    <h2 style="color: #f97316;">🧪 Il Calderone</h2>
-                    <div class="score-total">Punti: <span id="current-score" style="color:#538d4e;">0</span></div>
-                    <div class="streak-total">Serie: <span id="current-streak" style="color:#b59f3b;">0</span></div>
+                    <h2 style="color: #f97316; font-size: 2rem;">🧪 Il Calderone</h2>
+                    <div class="score-total">Punti: <span id="current-score" style="color:#538d4e; font-weight: bold;">0</span></div>
+                    <div class="streak-total">Serie: <span id="current-streak" style="color:#b59f3b; font-weight: bold;">0</span></div>
                     <ul id="words-list"></ul>
                 </div>
             </div>
@@ -39,13 +40,13 @@
     </div>
 
     <div id="global-save-container" class="hidden">
-        <p style="margin-bottom: 10px; color: #ffd700; font-weight: bold; font-size: 1.2rem;">🌍 Salva Record Globale!</p>
+        <p style="margin-bottom: 15px; color: #ffd700; font-weight: bold; font-size: 1.6rem; text-transform: uppercase;">🌍 Salva Record Globale!</p>
         <input type="text" id="leaderboard-username" placeholder="Tuo Nome (Max 10)" maxlength="10">
-        <button id="btn-submit-global">Invia</button>
+        <button id="btn-submit-global" class="main-btn" style="border-color: #b59f3b;">Invia Record</button>
     </div>
 
     <div id="message"></div>
-    <button id="restart-btn" class="hidden main-btn">Continua</button>
+    <button id="restart-btn" class="hidden main-btn" style="max-width: 300px;">Continua</button>
 
     <script src="words.js"></script>
     <script src="scoring.js"></script>

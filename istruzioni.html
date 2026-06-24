@@ -2,28 +2,36 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manuale di Gioco - Wordman</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div style="max-width: 600px; text-align: center;">
-        <h1 style="font-size: 1.5rem; margin-bottom: 30px;">COME SI GIOCA</h1>
-        
-        <div style="margin-bottom: 30px; line-height: 2;">
-            <p style="color: #538d4e;">[ VERDE ]</p>
-            <p style="font-size: 0.8rem; margin-bottom: 20px;">Lettera corretta, posizione esatta!</p>
+    <h1 class="main-title" style="font-size: 3.5rem; margin-top: 10px;">COME GIOCARE</h1>
+    
+    <div class="instructions-box">
+        <div style="margin-bottom: 25px;">
+            <p style="color: #538d4e; font-size: 2.2rem; font-weight: bold;">[ VERDE ]</p>
+            <p style="font-size: 1.4rem; margin-bottom: 15px; color: #bbb;">Lettera corretta, posizione esatta!</p>
 
-            <p style="color: #b59f3b;">[ GIALLO ]</p>
-            <p style="font-size: 0.8rem; margin-bottom: 20px;">Lettera presente nella parola, ma posizione sbagliata.</p>
+            <p style="color: #b59f3b; font-size: 2.2rem; font-weight: bold;">[ GIALLO ]</p>
+            <p style="font-size: 1.4rem; margin-bottom: 15px; color: #bbb;">Lettera presente nel testo, ma posizione errata.</p>
 
-            <p style="color: #3a3a3c;">[ GRIGIO ]</p>
-            <p style="font-size: 0.8rem; margin-bottom: 20px;">Lettera assente nella parola.</p>
+            <p style="color: #888; font-size: 2.2rem; font-weight: bold;">[ GRIGIO ]</p>
+            <p style="font-size: 1.4rem; color: #bbb;">Lettera completamente assente.</p>
         </div>
 
-        <p style="font-size: 0.9rem; margin-bottom: 30px;">Indovina la parola segreta in 6 tentativi.<br>Buona fortuna, giocatore!</p>
+        <hr style="border: 1px dashed #538d4e; margin: 20px 0;">
 
-        <button onclick="location.href='index.html'">INDIETRO</button>
+        <p style="font-size: 1.5rem; margin-bottom: 25px; text-transform: uppercase; color: #ff9f43;">
+            Indovina la parola segreta in 6 tentativi. Ad ogni errore, un pezzo dell'impiccato apparirà sullo schermo!
+        </p>
+        
+        <button onclick="window.location.href='index.html'" class="main-btn" style="max-width: 300px; margin: 0 auto; display: block;">
+            Torna al Menu
+        </button>
     </div>
 
 </body>

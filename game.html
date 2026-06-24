@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wordman - Arcade</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="top-bar-container">
+        <button onclick="window.location.href='index.html'" class="main-btn menu-back-btn">⬅️ Menu Principale</button>
+    </div>
+       
+    <div id="game-container">
+        
+        <div id="timer-wrapper" class="hidden">
+            <div id="timer-bar"></div>
+            <div id="timer-text">60s</div>
+        </div>
+
+        <div id="game-layout-wrapper">
+            
+            <div id="left-column">
+                <div class="calderone-container">
+                    <h2 style="color: #f97316;">🧪 Il Calderone</h2>
+                    <div class="score-total">Punti: <span id="current-score" style="color:#538d4e;">0</span></div>
+                    <div class="streak-total">Serie: <span id="current-streak" style="color:#b59f3b;">0</span></div>
+                    <ul id="words-list"></ul>
+                </div>
+            </div>
+
+            <div id="center-column">
+                <canvas id="hangman" width="200" height="250"></canvas>
+                <div id="game-board"></div>
+            </div>
+            
+        </div>
+    </div>
+
+    <div id="global-save-container" class="hidden">
+        <p style="margin-bottom: 10px; color: #ffd700; font-weight: bold; font-size: 1.2rem;">🌍 Salva Record Globale!</p>
+        <input type="text" id="leaderboard-username" placeholder="Tuo Nome (Max 10)" maxlength="10">
+        <button id="btn-submit-global">Invia</button>
+    </div>
+
+    <div id="message"></div>
+    <button id="restart-btn" class="hidden main-btn">Continua</button>
+
+    <script src="words.js"></script>
+    <script src="scoring.js"></script>
+    <script src="online-leaderboard.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>

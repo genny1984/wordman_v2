@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classifica Wordman</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #121213;
+            color: #ffffff;
+            /* Applica il font arcade a tutta la pagina */
+            font-family: 'VT323', monospace; 
+            margin: 0;
+            padding: 20px;
+        }
+
+        .leaderboard-container { 
+            max-width: 500px; 
+            margin: 0 auto; 
+            text-align: center; 
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            color: #538d4e;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 0px #000000;
+        }
+
+        /* Stile Griglia Arcade */
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 10px; 
+            background-color: #1e1e1f;
+            border: 2px solid #538d4e;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        th {
+            background-color: #538d4e;
+            color: white;
+            font-size: 1.4rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 12px;
+            border: 1px solid #3a3a3c;
+        }
+
+        td { 
+            padding: 12px; 
+            border: 1px solid #3a3a3c; 
+            font-size: 1.3rem;
+        }
+
+        /* Alternanza colori per le righe (stile tabulato) */
+        tbody tr:nth-child(even) {
+            background-color: #181819;
+        }
+
+        /* Evidenziazione dell'utente corrente */
+        .row-current-user { 
+            background: rgba(29, 209, 161, 0.15) !important; 
+            color: #1dd1a1; 
+            font-weight: bold; 
+        }
+
+        .dots-row td { 
+            color: #666; 
+            letter-spacing: 5px; 
+            background-color: #1e1e1f !important;
+        }
+
+        /* Bottone in stile Retro */
+        .back-btn {
+            background-color: transparent;
+            color: #538d4e;
+            border: 2px solid #538d4e;
+            padding: 12px 25px;
+            font-size: 1.5rem;
+            font-family: 'VT323', monospace;
+            cursor: pointer;
+            margin-top: 30px;
+            transition: all 0.2s ease-in-out;
+            text-transform: uppercase;
+        }
+
+        .back-btn:hover {
+            background-color: #538d4e;
+            color: white;
+            box-shadow: 0 0 10px #538d4e;
+        }
+    </style>
+</head>
+<body>
+    <div class="leaderboard-container">
+        <h2>🏆 Classifica Mondiale</h2>
+        <table id="leaderboard-table">
+            <thead>
+                <tr>
+                    <th>Pos</th>
+                    <th>Giocatore</th>
+                    <th>Punti</th>
+                </tr>
+            </thead>
+            <tbody id="leaderboard-body">
+                <tr><td colspan="3" style="color: #888;">Caricamento in corso...</td></tr>
+            </tbody>
+        </table>
+        
+        <button class="back-btn" onclick="window.location.href='index.html'">↩ Torna al Gioco</button>
+    </div>
+
+    <script src="online-leaderboard.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const body = document.getElementById("leaderboard-body");
+            try {
+                // Utilizza il file online-leaderboard.js fornito per la logica
+                const data = await ONLINE_LEADERBOARD.getLeaderboardData();
+
+                if (!data) {
+                    body.innerHTML = `<tr><td colspan='3' style="color: #ff4757;">Nessun dato o errore di rete.</td></tr>`;
+                    return;
+                }
+
+                body.innerHTML = ""; 
+
+                data.top10.forEach(p => {
+                    const tr = document.createElement("tr");
+                    if (p.isCurrentUser) tr.className = "row-current-user";
+                    tr.innerHTML = `<td>${p.rank}°</td><td>${p.username}</td><td>${p.score}</td>`;
+                    body.appendChild(tr);
+                });
+
+                if (data.currentUserRow && data.currentUserRow.rank > 10) {
+                    body.innerHTML += "<tr class='dots-row'><td colspan='3'>...</td></tr>";
+                    const tr = document.createElement("tr");
+                    tr.className = "row-current-user";
+                    tr.innerHTML = `<td>${data.currentUserRow.rank}°</td><td>${data.currentUserRow.username} (Tu)</td><td>${data.currentUserRow.score}</td>`;
+                    body.appendChild(tr);
+                }
+            } catch (err) {
+                body.innerHTML = `<tr><td colspan='3' style="color: #ff4757; font-size: 1rem;">ERRORE: ${err.message}</td></tr>`;
+            }
+        });
+    </script>
+</body>
+</html>

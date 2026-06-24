@@ -11,21 +11,27 @@ const ONLINE_LEADERBOARD = {
     },
 
 // 1. Inserimento diretto del punteggio (Risolto errore 406)
-    submitScore: async function(username, score) {
-        this._setLastUsername(username);
-        const insertUrl = `${this.SUPABASE_URL}/rest/v1/leaderboard`;
-        
-        try {
-            const response = await fetch(insertUrl, {
-                method: 'POST',
-                headers: {
-                    'apikey': this.SUPABASE_KEY,
-                    'Authorization': `Bearer ${this.SUPABASE_KEY}`,
-                    'Content-Type': 'application/json'
-                    // Rimosso 'Prefer': 'return=representation' per evitare il blocco 406
-                },
-                body: JSON.stringify({ username: username, score: score })
-            });
+	submitScore: async function(username, score) {
+		this._setLastUsername(username);
+		const insertUrl = `${this.SUPABASE_URL}/rest/v1/leaderboard`;
+		
+		try {
+			const response = await fetch(insertUrl, {
+				method: 'POST',
+				headers: {
+					'apikey': this.SUPABASE_KEY,
+					'Authorization': `Bearer ${this.SUPABASE_KEY}`,
+					'Content-Type': 'application/json',
+					'Prefer': 'resolution=merge-duplicates' // Forza il merge se il record esiste
+				},
+				body: JSON.stringify({ username: username, score: score })
+			});
+
+			return response.status >= 200 && response.status < 300;
+		} catch (error) {
+			return false;
+		}
+	},
 
             // Con POST senza representation, lo stato di successo standard è 201 (Created)
             if (response.status === 201 || response.ok) {

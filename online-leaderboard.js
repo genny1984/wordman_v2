@@ -10,7 +10,7 @@ const ONLINE_LEADERBOARD = {
         return localStorage.getItem('wordman_last_username') || '';
     },
 
-    // 1. Inserimento diretto del punteggio (Adattato perfettamente alle tue 4 colonne)
+// 1. Inserimento diretto del punteggio (Risolto errore 406)
     submitScore: async function(username, score) {
         this._setLastUsername(username);
         const insertUrl = `${this.SUPABASE_URL}/rest/v1/leaderboard`;
@@ -21,17 +21,19 @@ const ONLINE_LEADERBOARD = {
                 headers: {
                     'apikey': this.SUPABASE_KEY,
                     'Authorization': `Bearer ${this.SUPABASE_KEY}`,
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=representation'
+                    'Content-Type': 'application/json'
+                    // Rimosso 'Prefer': 'return=representation' per evitare il blocco 406
                 },
                 body: JSON.stringify({ username: username, score: score })
             });
 
-            if (!response.ok) {
+            // Con POST senza representation, lo stato di successo standard è 201 (Created)
+            if (response.status === 201 || response.ok) {
+                return { success: true };
+            } else {
                 console.error("Errore del server Supabase:", await response.text());
                 return null;
             }
-            return await response.json();
         } catch (error) {
             console.error("Errore di rete durante il salvataggio:", error);
             return null;

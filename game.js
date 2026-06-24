@@ -1,12 +1,10 @@
 /**
  * WORDMAN - MOTORE UNIFICATO ARCADE
- * Fix definitivo per lettura diretta del modulo SCORING e stabilità totale viewport mobile
- * + INTEGRAZIONE MODALITÀ DEBUG SU TUTTE LE MODALITÀ
+ * Integrazione Record Personale, Posizione Globale (Live Rank) e Debug Mode su tutte le modalità
  */
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    // Se un altro file cerca ancora window.SCORING, lo forziamo programmaticamente qui
     if (typeof SCORING !== 'undefined') {
         window.SCORING = SCORING;
     }
@@ -34,6 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let timeLeft = 60;
     let timerInterval = null;
 
+    // Gestione Record Personale Locale
+    let personalBest = parseInt(localStorage.getItem('wordman_personal_best')) || 0;
+
     // 3. ELEMENTI DOM
     const board = document.getElementById("game-board");
     const canvas = document.getElementById("hangman");
@@ -48,9 +49,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const timerBar = document.getElementById("timer-bar");
     const timerText = document.getElementById("timer-text");
 
+    // Elementi Statistiche Persistenti in alto
+    const topPersonalBestEl = document.getElementById("top-personal-best");
+    const topGlobalRankEl = document.getElementById("top-global-rank");
+
+    // Rendering iniziale statistiche personali
+    if (topPersonalBestEl) topPersonalBestEl.innerText = personalBest;
+
     if (GAME_MODE === 'timer') {
         timerWrapper.classList.remove("hidden");
     }
+
+    // Funzione per aggiornare il Rank Mondiale in tempo reale in alto a destra
+    async function updateLiveGlobalRank() {
+        if (window.ONLINE_LEADERBOARD && typeof window.ONLINE_LEADERBOARD.getLeaderboardData === "function") {
+            const data = await window.ONLINE_LEADERBOARD.getLeaderboardData();
+            if (data && data.currentUserRow) {
+                if (topGlobalRankEl) topGlobalRankEl.innerText = `${data.currentUserRow.rank}°`;
+            } else {
+                if (topGlobalRankEl) topGlobalRankEl.innerText = "--";
+            }
+        }
+    }
+
+    // Carica il Rank all'avvio della pagina
+    updateLiveGlobalRank();
 
     // 4. TRUCCO MOBILE DEFINITIVO: Input a tutto schermo per prevenire scroll anomali
     const mobileInput = document.createElement("input");
@@ -60,14 +83,13 @@ document.addEventListener('DOMContentLoaded', () => {
     mobileInput.setAttribute("autocapitalize", "characters");
     mobileInput.setAttribute("spellcheck", "false");
     
-    // Coprendo l'intero viewport, il focus nativo non richiede spostamenti di telecamera al browser
     mobileInput.style.position = "fixed";
     mobileInput.style.top = "0"; 
     mobileInput.style.left = "0";
     mobileInput.style.width = "100vw"; 
     mobileInput.style.height = "100vh";
     mobileInput.style.opacity = "0"; 
-    mobileInput.style.fontSize = "16px"; // Blocca lo zoom automatico di iOS Safari
+    mobileInput.style.fontSize = "16px"; 
     mobileInput.style.zIndex = "-1000";
     mobileInput.style.pointerEvents = "none";
     document.body.appendChild(mobileInput);
@@ -80,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.addEventListener("click", (e) => {
-        if (e.target.id === "leaderboard-username" || e.target.closest("button")) return;
+        if (e.target.id === "leaderboard-username" || e.target.id === "btn-submit-global" || e.target.closest("button")) return;
         focusMobileInput();
     });
 
@@ -192,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // 7. VERIFICA RIGA CON INTEGRATO SISTEMA DI DEBUG INTERCETTO
+    // 7. VERIFICA RIGA CON INTEGRATO SISTEMA DI DEBUG INTERCETTO E RECORD PERSONALE
     function checkRow() {
         // --- FUNZIONE DI DEBUG APPLICATA A TUTTE LE MODALITÀ ---
         let currentTypedString = "";
@@ -204,17 +226,14 @@ document.addEventListener('DOMContentLoaded', () => {
         currentTypedString = currentTypedString.trim().toUpperCase();
 
         if (currentTypedString === "DEBUG") {
-            // Mostra la parola segreta nei messaggi di gioco
             showMessage(`🔍 [DEBUG] Parola segreta: ${SECRET_WORD}`);
-            
-            // Svuota istantaneamente le caselle digitate per permettere il proseguimento del test
             for (let i = 0; i < currentTile; i++) {
                 const tile = document.getElementById(`tile-${startIndex + i}`);
                 if (tile) tile.innerText = "";
             }
             currentTile = 0;
-            mobileInput.value = "X"; // Reset input mobile
-            return; // Interrompe l'esecuzione così non valida la riga come tentativo fallito
+            mobileInput.value = "X"; 
+            return; 
         }
         // ------------------------------------------------------
 
@@ -262,6 +281,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         totalScore += rowPoints;
 
+        // Controllo e aggiornamento real-time del Record Personale
+        if (totalScore > personalBest) {
+            personalBest = totalScore;
+            localStorage.setItem('wordman_personal_best', personalBest);
+            if (topPersonalBestEl) topPersonalBestEl.innerText = personalBest;
+        }
+
         for (let i = 0; i < WORD_LENGTH; i++) {
             const tile = document.getElementById(`tile-${startIndex + i}`);
             if (tile) tile.classList.add(tileStatuses[i]);
@@ -278,6 +304,13 @@ document.addEventListener('DOMContentLoaded', () => {
             
             totalScore += victoryBonus;
             streakCount++; 
+
+            // Ricontrollo Record dopo il bonus vittoria
+            if (totalScore > personalBest) {
+                personalBest = totalScore;
+                localStorage.setItem('wordman_personal_best', personalBest);
+                if (topPersonalBestEl) topPersonalBestEl.innerText = personalBest;
+            }
             
             currentScoreEl.innerText = totalScore;
             currentStreakEl.innerText = streakCount;
@@ -383,7 +416,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await window.ONLINE_LEADERBOARD.submitScore(username, totalScore);
                 if (res) {
                     showMessage(`🌍 Record registrato!`);
-                    setTimeout(() => { window.location.href = "leaderboard.html"; }, 1000);
+                    await updateLiveGlobalRank(); // Rinfresca istantaneamente il widget prima del redirect
+                    setTimeout(() => { window.location.href = "leaderboard.html"; }, 1200);
                 } else {
                     showMessage(`❌ Errore di rete.`);
                     btnSubmitGlobal.innerText = "INVIA RECORD";

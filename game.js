@@ -1,9 +1,14 @@
 /**
  * WORDMAN - MOTORE UNIFICATO ARCADE
- * Fix definitivo focus mobile senza salti di visualizzazione e integrazione scoring.js
+ * Fix definitivo per lettura diretta del modulo SCORING e stabilità totale viewport mobile
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+
+    // Se un altro file cerca ancora window.SCORING, lo forziamo programmaticamente qui
+    if (typeof SCORING !== 'undefined') {
+        window.SCORING = SCORING;
+    }
 
     // 1. PARAMETRI DI CONFIGURAZIONE URL
     const params = new URLSearchParams(window.location.search);
@@ -11,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const WORD_LENGTH = parseInt(params.get('len')) || 5; 
     const MAX_ATTEMPTS = 6;
 
-    // Dizionari Fallback
+    // Dizionari Fallback di sicurezza
     const EASY_WORDS = (window.EASY_WORDS && window.EASY_WORDS.length > 0) ? window.EASY_WORDS : ["TRENO", "GATTO", "PIZZA", "CORSA", "FUOCO", "MONDO", "TASTO", "LIBRO", "VERDE", "FIORE"];
     const HARD_WORDS = (window.HARD_WORDS && window.HARD_WORDS.length > 0) ? window.HARD_WORDS : ["ALBERO", "LAVORO", "STRADA", "CHIESA", "PIANTO", "SABBIA", "STORIA", "SANGUE"];
 
@@ -46,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
         timerWrapper.classList.remove("hidden");
     }
 
-    // 4. FIX MOBILE: CREAZIONE INPUT INVISIBILE ANTI-SCROLL (FONT A 16px PREVIENE ZOOM ED AUTO-SCROLL DI IOS)
+    // 4. TRUCCO MOBILE DEFINITIVO: Input a tutto schermo per prevenire scroll anomali
     const mobileInput = document.createElement("input");
     mobileInput.type = "text";
     mobileInput.setAttribute("inputmode", "text");
@@ -54,16 +59,16 @@ document.addEventListener('DOMContentLoaded', () => {
     mobileInput.setAttribute("autocapitalize", "characters");
     mobileInput.setAttribute("spellcheck", "false");
     
-    // Posizionamento strategico al centro dello schermo fisso per evitare scroll avversi
+    // Coprendo l'intero viewport, il focus nativo non richiede spostamenti di telecamera al browser
     mobileInput.style.position = "fixed";
-    mobileInput.style.top = "30%"; 
-    mobileInput.style.left = "50%";
-    mobileInput.style.transform = "translate(-50%, -50%)";
-    mobileInput.style.width = "1px"; 
-    mobileInput.style.height = "1px";
-    mobileInput.style.opacity = "0.01"; 
-    mobileInput.style.fontSize = "16px"; // 16px blocca nativamente il salto dello schermo su iOS Safari!
+    mobileInput.style.top = "0"; 
+    mobileInput.style.left = "0";
+    mobileInput.style.width = "100vw"; 
+    mobileInput.style.height = "100vh";
+    mobileInput.style.opacity = "0"; 
+    mobileInput.style.fontSize = "16px"; // Blocca lo zoom automatico di iOS Safari
     mobileInput.style.zIndex = "-1000";
+    mobileInput.style.pointerEvents = "none";
     document.body.appendChild(mobileInput);
     mobileInput.value = "X";
 
@@ -73,7 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
         mobileInput.focus({ preventScroll: true });
     }
 
-    // Cliccando sulla griglia o sullo sfondo riprendi il focus senza saltare
     document.addEventListener("click", (e) => {
         if (e.target.id === "leaderboard-username" || e.target.closest("button")) return;
         focusMobileInput();
@@ -116,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (key === "ENTER") checkRow();
     });
 
-    // 5. SELEZIONE PAROLA RIGIDA
+    // 5. SELEZIONE PAROLA RIGIDA E PREVENTIVA
     function getValidSecretWord() {
         let basePool = (WORD_LENGTH === 5) ? EASY_WORDS : HARD_WORDS;
         let filteredPool = basePool.filter(word => word.trim().length === WORD_LENGTH);
@@ -136,7 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return chosenWord;
     }
 
-    // 6. LOGICA ROUND
+    // 6. LOGICA DI INIZIO ROUND
     function startNewRound() {
         SECRET_WORD = getValidSecretWord();
         currentAttempt = 0;
@@ -187,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // 7. CORREZIONE VERIFICA RIGA CON LOGICA DI SCORING DIRETTA
     function checkRow() {
         if (currentTile !== WORD_LENGTH) {
             showMessage(`Inserisci ${WORD_LENGTH} lettere!`); 
@@ -219,10 +224,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // CHIAMATA SINFONICA SCORING.JS CORRETTA
+        // LETTURA DIRETTA DELLA VARIABILE GLOBALE SCORING (Supera il limite del blocco const)
         let rowPoints = 0;
-        if (window.SCORING && typeof window.SCORING.calculateRowPoints === "function") {
-            rowPoints = window.SCORING.calculateRowPoints(tileStatuses, WORD_LENGTH);
+        if (typeof SCORING !== "undefined" && typeof SCORING.calculateRowPoints === "function") {
+            rowPoints = SCORING.calculateRowPoints(tileStatuses, WORD_LENGTH);
         } else {
             tileStatuses.forEach(s => { 
                 if(s === 'correct') rowPoints += 20; 
@@ -238,13 +243,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tile) tile.classList.add(tileStatuses[i]);
         }
 
-        // VITTORIA ROUND
+        // CASO DI VITTORIA
         if (guess === SECRET_WORD) {
             if (GAME_MODE === 'timer') clearInterval(timerInterval);
 
             let victoryBonus = 0;
-            if (window.SCORING && typeof window.SCORING.calculateVictoryBonus === "function") {
-                victoryBonus = window.SCORING.calculateVictoryBonus(currentAttempt, WORD_LENGTH, (GAME_MODE === 'timer'), timeLeft);
+            if (typeof SCORING !== "undefined" && typeof SCORING.calculateVictoryBonus === "function") {
+                victoryBonus = SCORING.calculateVictoryBonus(currentAttempt, WORD_LENGTH, (GAME_MODE === 'timer'), timeLeft);
             }
             
             totalScore += victoryBonus;
@@ -270,7 +275,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         currentScoreEl.innerText = totalScore;
 
-        // SCONFITTA SESSIONE
         if (currentAttempt === MAX_ATTEMPTS) {
             if (GAME_MODE === 'timer') clearInterval(timerInterval);
             showMessage(`💥 FINITO! Era: ${SECRET_WORD}`);

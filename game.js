@@ -23,407 +23,442 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 2. STATO DEL GIOCO
     let SECRET_WORD = "";
-    let currentAttempt = 0; 
-    let currentTile = 0;    
-    let totalScore = 0;
-    let streakCount = 0;
-    let isGameOverState = false;
+    let currentAttempt = 0;
+    let currentTileIndex = 0;
+    let isGameOver = false;
 
-    let timeLeft = 60;
+    // Punteggi sessione continuativa (Arcade Survival)
+    let totalScore = parseInt(localStorage.getItem('wordman_total_score')) || 0;
+    let currentStreak = parseInt(localStorage.getItem('wordman_current_streak')) || 0;
+
+    // Record personale memorizzato sul browser
+    let personalBest = parseInt(localStorage.getItem(`wordman_pb_${GAME_MODE}_${WORD_LENGTH}`)) || 0;
+
+    // Gestione Timer
     let timerInterval = null;
+    let timeLeft = 60; 
 
-    // Gestione Record Personale Locale
-    let personalBest = parseInt(localStorage.getItem('wordman_personal_best')) || 0;
-
-    // 3. ELEMENTI DOM
-    const board = document.getElementById("game-board");
-    const canvas = document.getElementById("hangman");
-    const ctx = canvas.getContext("2d");
+    // Elementi DOM
+    const boardEl = document.getElementById("game-board");
+    const messageEl = document.getElementById("message");
     const restartBtn = document.getElementById("restart-btn");
     const currentScoreEl = document.getElementById("current-score");
     const currentStreakEl = document.getElementById("current-streak");
     const wordsListEl = document.getElementById("words-list");
-    const globalSaveContainer = document.getElementById("global-save-container");
-    const messageEl = document.getElementById("message");
+    const keyboardInputTrigger = document.getElementById("keyboard-trigger");
     const timerWrapper = document.getElementById("timer-wrapper");
-    const timerBar = document.getElementById("timer-bar");
-    const timerText = document.getElementById("timer-text");
+    const timerTextEl = document.getElementById("timer-text");
+    const saveContainer = document.getElementById("global-save-container");
 
-    // Elementi Statistiche Persistenti in alto
-    const topPersonalBestEl = document.getElementById("top-personal-best");
-    const topGlobalRankEl = document.getElementById("top-global-rank");
+    // Inizializzazione Interfaccia Punteggi
+    if (currentScoreEl) currentScoreEl.innerText = totalScore;
+    if (currentStreakEl) currentStreakEl.innerText = currentStreak;
 
-    // Rendering iniziale statistiche personali
-    if (topPersonalBestEl) topPersonalBestEl.innerText = personalBest;
+    // Mostra Record Personale Storico nel widget se presente
+    updatePersonalBestWidget();
 
-    if (GAME_MODE === 'timer') {
-        timerWrapper.classList.remove("hidden");
-    }
+    // Avvio del Gioco
+    initGame();
 
-    // Funzione per aggiornare il Rank Mondiale in tempo reale in alto a destra
-    async function updateLiveGlobalRank() {
-        if (window.ONLINE_LEADERBOARD && typeof window.ONLINE_LEADERBOARD.getLeaderboardData === "function") {
-            const data = await window.ONLINE_LEADERBOARD.getLeaderboardData();
-            if (data && data.currentUserRow) {
-                if (topGlobalRankEl) topGlobalRankEl.innerText = `${data.currentUserRow.rank}°`;
-            } else {
-                if (topGlobalRankEl) topGlobalRankEl.innerText = "--";
-            }
-        }
-    }
-
-    // Carica il Rank all'avvio della pagina
+    // Sincronizza il Widget della posizione globale dal server Supabase
     updateLiveGlobalRank();
 
-    // 4. TRUCCO MOBILE DEFINITIVO: Input a tutto schermo per prevenire scroll anomali
-    const mobileInput = document.createElement("input");
-    mobileInput.type = "text";
-    mobileInput.setAttribute("inputmode", "text");
-    mobileInput.setAttribute("autocomplete", "off");
-    mobileInput.setAttribute("autocapitalize", "characters");
-    mobileInput.setAttribute("spellcheck", "false");
-    
-    mobileInput.style.position = "fixed";
-    mobileInput.style.top = "0"; 
-    mobileInput.style.left = "0";
-    mobileInput.style.width = "100vw"; 
-    mobileInput.style.height = "100vh";
-    mobileInput.style.opacity = "0"; 
-    mobileInput.style.fontSize = "16px"; 
-    mobileInput.style.zIndex = "-1000";
-    mobileInput.style.pointerEvents = "none";
-    document.body.appendChild(mobileInput);
-    mobileInput.value = "X";
-
-    function focusMobileInput() {
-        if (!restartBtn.classList.contains("hidden")) return;
-        if (document.activeElement === document.getElementById("leaderboard-username")) return;
-        mobileInput.focus({ preventScroll: true });
-    }
-
-    document.addEventListener("click", (e) => {
-        if (e.target.id === "leaderboard-username" || e.target.id === "btn-submit-global" || e.target.closest("button")) return;
-        focusMobileInput();
-    });
-
-    mobileInput.addEventListener("input", (e) => {
-        if (GAME_MODE === 'timer' && timeLeft <= 0) { mobileInput.value = "X"; return; }
-        const val = mobileInput.value;
-        if (val.length === 0) {
-            if (restartBtn.classList.contains("hidden")) removeLetter();
-            mobileInput.value = "X";
-        } else if (val.length > 1) {
-            const key = val.charAt(1).toUpperCase();
-            if (key >= "A" && key <= "Z") addLetter(key);
-            mobileInput.value = "X";
-        }
-    });
-
-    mobileInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            if (!restartBtn.classList.contains("hidden")) restartBtn.click();
-            else checkRow();
-            e.preventDefault();
-        }
-    });
-
-    window.addEventListener("keydown", (e) => {
-        if (document.activeElement === document.getElementById("leaderboard-username")) return;
-        if (e.target === mobileInput) return;
-        const key = e.key.toUpperCase();
-
-        if (!restartBtn.classList.contains("hidden")) {
-            if (key === "ENTER") restartBtn.click();
-            return;
-        }
-        if (currentAttempt >= MAX_ATTEMPTS || (GAME_MODE === 'timer' && timeLeft <= 0)) return;
-
-        if (key.length === 1 && key >= "A" && key <= "Z") addLetter(key);
-        if (key === "BACKSPACE") removeLetter();
-        if (key === "ENTER") checkRow();
-    });
-
-    // 5. SELEZIONE PAROLA RIGIDA E PREVENTIVA
-    function getValidSecretWord() {
-        let basePool = (WORD_LENGTH === 5) ? EASY_WORDS : HARD_WORDS;
-        let filteredPool = basePool.filter(word => word.trim().length === WORD_LENGTH);
-
-        if (filteredPool.length === 0) {
-            return (WORD_LENGTH === 5) ? "TRENO" : "ALBERO"; 
-        }
-
-        let availablePool = filteredPool.filter(word => !usedWords.has(word.toUpperCase()));
-        if (availablePool.length === 0) {
-            usedWords.clear();
-            availablePool = filteredPool;
-        }
-
-        let chosenWord = availablePool[Math.floor(Math.random() * availablePool.length)].toUpperCase();
-        usedWords.add(chosenWord);
-        return chosenWord;
-    }
-
-    // 6. LOGICA DI INIZIO ROUND
-    function startNewRound() {
-        SECRET_WORD = getValidSecretWord();
+    function initGame() {
+        SECRET_WORD = getRandomWord();
         currentAttempt = 0;
-        currentTile = 0;
-        showMessage("");
-        
-        restartBtn.classList.add("hidden");
-        globalSaveContainer.classList.add("hidden");
+        currentTileIndex = 0;
+        isGameOver = false;
+        if (messageEl) messageEl.innerText = "";
+        if (restartBtn) restartBtn.classList.add("hidden");
+        if (saveContainer) saveContainer.classList.add("hidden");
 
-        board.style.setProperty('--cols', WORD_LENGTH);
-        board.innerHTML = "";
-        for (let i = 0; i < MAX_ATTEMPTS * WORD_LENGTH; i++) {
-            const tile = document.createElement("div");
-            tile.classList.add("tile");
-            tile.setAttribute("id", `tile-${i}`);
-            board.appendChild(tile);
-        }
+        console.log("DEBUG - Parola segreta:", SECRET_WORD);
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = "#fff"; ctx.lineWidth = 3; ctx.beginPath();
-        ctx.moveTo(10, 240); ctx.lineTo(150, 240);
-        ctx.moveTo(40, 240); ctx.lineTo(40, 20);
-        ctx.moveTo(40, 20);  ctx.lineTo(120, 20);
-        ctx.moveTo(120, 20); ctx.lineTo(120, 50);
-        ctx.stroke();
-
-        if (GAME_MODE === 'timer') startTimer();
-        setTimeout(focusMobileInput, 100);
-    }
-
-    function addLetter(letter) {
-        if (currentTile < WORD_LENGTH) {
-            const index = (currentAttempt * WORD_LENGTH) + currentTile;
-            const tile = document.getElementById(`tile-${index}`);
-            if (tile) {
-                tile.innerText = letter;
-                currentTile++;
-            }
-        }
-    }
-
-    function removeLetter() {
-        if (currentTile > 0) {
-            currentTile--;
-            const index = (currentAttempt * WORD_LENGTH) + currentTile;
-            const tile = document.getElementById(`tile-${index}`);
-            if (tile) tile.innerText = "";
-        }
-    }
-
-    // 7. VERIFICA RIGA CON INTEGRATO SISTEMA DI DEBUG INTERCETTO E RECORD PERSONALE
-    function checkRow() {
-        let currentTypedString = "";
-        const startIndex = currentAttempt * WORD_LENGTH;
-        for (let i = 0; i < currentTile; i++) {
-            const tile = document.getElementById(`tile-${startIndex + i}`);
-            if (tile && tile.innerText) currentTypedString += tile.innerText;
-        }
-        currentTypedString = currentTypedString.trim().toUpperCase();
-
-        if (currentTypedString === "DEBUG") {
-            showMessage(`🔍 [DEBUG] Parola segreta: ${SECRET_WORD}`);
-            for (let i = 0; i < currentTile; i++) {
-                const tile = document.getElementById(`tile-${startIndex + i}`);
-                if (tile) tile.innerText = "";
-            }
-            currentTile = 0;
-            mobileInput.value = "X"; 
-            return; 
-        }
-
-        if (currentTile !== WORD_LENGTH) {
-            showMessage(`Inserisci ${WORD_LENGTH} lettere!`); 
-            return;
-        }
-
-        let guess = "";
-        for (let i = 0; i < WORD_LENGTH; i++) {
-            const tile = document.getElementById(`tile-${startIndex + i}`);
-            if (tile && tile.innerText) guess += tile.innerText;
-        }
-        guess = guess.trim().toUpperCase();
-
-        let tileStatuses = new Array(WORD_LENGTH).fill("absent");
-        let secretLettersRemaining = SECRET_WORD.split("");
-
-        for (let i = 0; i < WORD_LENGTH; i++) {
-            if (guess[i] === SECRET_WORD[i]) {
-                tileStatuses[i] = "correct"; 
-                secretLettersRemaining[i] = null;
-            }
-        }
-        for (let i = 0; i < WORD_LENGTH; i++) {
-            if (tileStatuses[i] === "correct") continue;
-            const idx = secretLettersRemaining.indexOf(guess[i]);
-            if (idx !== -1) {
-                tileStatuses[i] = "present"; 
-                secretLettersRemaining[idx] = null;
+        // Configurazione griglia dinamica basata sui CSS esistenti
+        if (boardEl) {
+            boardEl.innerHTML = "";
+            boardEl.style.gridTemplateColumns = `repeat(${WORD_LENGTH}, 1fr)`;
+            
+            for (let i = 0; i < MAX_ATTEMPTS * WORD_LENGTH; i++) {
+                const tile = document.createElement("div");
+                tile.classList.add("tile");
+                boardEl.appendChild(tile);
             }
         }
 
-        let rowPoints = 0;
-        if (typeof SCORING !== "undefined" && typeof SCORING.calculateRowPoints === "function") {
-            rowPoints = SCORING.calculateRowPoints(tileStatuses, WORD_LENGTH);
+        resetCanvas();
+
+        // Configurazione Timer basata sulla modalità
+        if (GAME_MODE === 'timer') {
+            if (timerWrapper) timerWrapper.classList.remove("hidden");
+            timeLeft = 60;
+            if (timerTextEl) timerTextEl.innerText = timeLeft + "s";
+            startTimer();
         } else {
-            tileStatuses.forEach(s => { 
-                if(s === 'correct') rowPoints += 20; 
-                if(s === 'present') rowPoints += 10; 
-            });
-            if (WORD_LENGTH === 6) rowPoints = Math.round(rowPoints * 1.5);
-        }
-        
-        totalScore += rowPoints;
-
-        if (totalScore > personalBest) {
-            personalBest = totalScore;
-            localStorage.setItem('wordman_personal_best', personalBest);
-            if (topPersonalBestEl) topPersonalBestEl.innerText = personalBest;
+            if (timerWrapper) timerWrapper.classList.add("hidden");
         }
 
-        for (let i = 0; i < WORD_LENGTH; i++) {
-            const tile = document.getElementById(`tile-${startIndex + i}`);
-            if (tile) tile.classList.add(tileStatuses[i]);
-        }
-
-        // CASO DI VITTORIA
-        if (guess === SECRET_WORD) {
-            if (GAME_MODE === 'timer') clearInterval(timerInterval);
-
-            let victoryBonus = 0;
-            if (typeof SCORING !== "undefined" && typeof SCORING.calculateVictoryBonus === "function") {
-                victoryBonus = SCORING.calculateVictoryBonus(currentAttempt, WORD_LENGTH, (GAME_MODE === 'timer'), timeLeft);
-            }
-            
-            totalScore += victoryBonus;
-            streakCount++; 
-
-            if (totalScore > personalBest) {
-                personalBest = totalScore;
-                localStorage.setItem('wordman_personal_best', personalBest);
-                if (topPersonalBestEl) topPersonalBestEl.innerText = personalBest;
-            }
-            
-            currentScoreEl.innerText = totalScore;
-            currentStreakEl.innerText = streakCount;
-
-            const li = document.createElement("li");
-            li.innerHTML = `✔️ <span style="color:#538d4e;">${SECRET_WORD}</span> +${rowPoints + victoryBonus}pt`;
-            wordsListEl.prepend(li);
-
-            showMessage(`🎉 ROUND SUPERATO!`);
-            isGameOverState = false;
-            restartBtn.innerText = "Prossima Parola";
-            restartBtn.classList.remove("hidden");
-            return;
-        }
-
-        drawHangman(currentAttempt);
-        currentAttempt++;
-        currentTile = 0;
-
-        currentScoreEl.innerText = totalScore;
-
-        if (currentAttempt === MAX_ATTEMPTS) {
-            if (GAME_MODE === 'timer') clearInterval(timerInterval);
-            showMessage(`💥 FINITO! Era: ${SECRET_WORD}`);
-            triggerGameOver();
-        }
+        // Forza il focus per input mobile su schermi touch o click
+        focusMobileInput();
     }
 
+    function getRandomWord() {
+        const pool = (WORD_LENGTH === 6) ? HARD_WORDS : EASY_WORDS;
+        const available = pool.filter(w => !usedWords.has(w));
+        
+        if (available.length === 0) {
+            usedWords.clear(); // Se esaurite, ricomincia il giro
+            return pool[Math.floor(Math.random() * pool.length)];
+        }
+        
+        const chosen = available[Math.floor(Math.random() * available.length)];
+        usedWords.add(chosen);
+        return chosen;
+    }
+
+    // --- LOGICA TIMER ---
     function startTimer() {
         clearInterval(timerInterval);
-        timeLeft = 60;
-        updateTimerUI();
         timerInterval = setInterval(() => {
-            if (!restartBtn.classList.contains("hidden")) return clearInterval(timerInterval);
+            if (isGameOver) {
+                clearInterval(timerInterval);
+                return;
+            }
             timeLeft--;
-            updateTimerUI();
+            if (timerTextEl) timerTextEl.innerText = timeLeft + "s";
+
             if (timeLeft <= 0) {
                 clearInterval(timerInterval);
-                showMessage(`⏰ TEMPO SCADUTO! Era: ${SECRET_WORD}`);
-                triggerGameOver();
+                handleLoss(true); // Perso per tempo scaduto
             }
         }, 1000);
     }
 
-    function updateTimerUI() {
-        timerText.innerText = `${timeLeft}s`;
-        const percentage = (timeLeft / 60) * 100;
-        timerBar.style.width = `${percentage}%`;
-        if (timeLeft <= 15) timerBar.style.backgroundColor = "#ff4757";
-        else if (timeLeft <= 35) timerBar.style.backgroundColor = "#ff9f43";
-        else timerBar.style.backgroundColor = "#1dd1a1";
-    }
+    // --- GESTIONE INPUT (UNIFICATO KEYBOARD/MOBILE) ---
+    if (keyboardInputTrigger) {
+        keyboardInputTrigger.addEventListener("input", (e) => {
+            if (isGameOver) {
+                keyboardInputTrigger.value = "";
+                return;
+            }
+            const value = keyboardInputTrigger.value.toUpperCase().replace(/[^A-Z]/g, '');
+            syncInputToTiles(value);
+        });
 
-    function triggerGameOver() {
-        isGameOverState = true;
-        restartBtn.innerText = "Nuova Partita";
-        restartBtn.classList.remove("hidden");
-        if (totalScore > 0) {
-            globalSaveContainer.classList.remove("hidden");
-            const userInp = document.getElementById("leaderboard-username");
-            if (userInp) userInp.focus();
-        } else {
-            resetSessionData();
-        }
-    }
-
-    function resetSessionData() {
-        totalScore = 0; streakCount = 0;
-        currentScoreEl.innerText = "0"; currentStreakEl.innerText = "0";
-        wordsListEl.innerHTML = "";
-        usedWords.clear();
-    }
-
-    restartBtn.addEventListener("click", () => {
-        if (isGameOverState) resetSessionData();
-        startNewRound();
-    });
-
-    function drawHangman(step) {
-        ctx.strokeStyle = "#ff4757"; ctx.lineWidth = 4; ctx.beginPath();
-        switch (step) {
-            case 0: ctx.arc(120, 70, 20, 0, Math.PI * 2); break; 
-            case 1: ctx.moveTo(120, 90); ctx.lineTo(120, 160); break; 
-            case 2: ctx.moveTo(120, 110); ctx.lineTo(90, 130); break; 
-            case 3: ctx.moveTo(120, 110); ctx.lineTo(150, 130); break; 
-            case 4: ctx.moveTo(120, 160); ctx.lineTo(95, 210); break; 
-            case 5: ctx.moveTo(120, 160); ctx.lineTo(145, 210); break; 
-        }
-        ctx.stroke();
-    }
-
-    function showMessage(text) { messageEl.innerText = text; }
-
-    const btnSubmitGlobal = document.getElementById("btn-submit-global");
-    if (btnSubmitGlobal) {
-        btnSubmitGlobal.addEventListener("click", async () => {
-            const userInp = document.getElementById("leaderboard-username");
-            if (!userInp) return;
-            const username = userInp.value.trim().toUpperCase();
-            if (!username) return;
-
-            btnSubmitGlobal.innerText = "INVIO...";
-            btnSubmitGlobal.disabled = true;
-
-            if (window.ONLINE_LEADERBOARD) {
-                const res = await window.ONLINE_LEADERBOARD.submitScore(username, totalScore);
-                if (res) {
-                    showMessage(`🌍 Record registrato!`);
-                    await updateLiveGlobalRank(); 
-                    setTimeout(() => { window.location.href = "leaderboard.html"; }, 1200);
-                } else {
-                    showMessage(`❌ Errore di rete.`);
-                    btnSubmitGlobal.innerText = "INVIA RECORD";
-                    btnSubmitGlobal.disabled = false;
-                }
+        keyboardInputTrigger.addEventListener("keydown", (e) => {
+            if (isGameOver) return;
+            if (e.key === "Enter") {
+                submitGuess();
             }
         });
     }
 
-    startNewRound();
+    function syncInputToTiles(value) {
+        const startRowIndex = currentAttempt * WORD_LENGTH;
+        const tiles = boardEl.querySelectorAll(".tile");
+
+        for (let i = 0; i < WORD_LENGTH; i++) {
+            const tile = tiles[startRowIndex + i];
+            if (tile) {
+                if (i < value.length) {
+                    tile.innerText = value[i];
+                    tile.setAttribute("data-state", "tbd");
+                } else {
+                    tile.innerText = "";
+                    tile.removeAttribute("data-state");
+                }
+            }
+        }
+        currentTileIndex = value.length;
+    }
+
+    function focusMobileInput() {
+        if (!isGameOver && keyboardInputTrigger) {
+            keyboardInputTrigger.focus();
+        }
+    }
+
+    document.addEventListener("click", (e) => {
+        if (e.target.id === "username" || e.target.id === "btn-submit-global" || e.target.closest("button")) return;
+        focusMobileInput();
+    });
+
+    // --- VERIFICA TENTATIVO ---
+    function submitGuess() {
+        if (!keyboardInputTrigger) return;
+        const guess = keyboardInputTrigger.value.toUpperCase().replace(/[^A-Z]/g, '');
+
+        if (guess.length !== WORD_LENGTH) {
+            showMessage(`Inserisci ${WORD_LENGTH} lettere!`);
+            return;
+        }
+
+        const startRowIndex = currentAttempt * WORD_LENGTH;
+        const tiles = boardEl.querySelectorAll(".tile");
+        
+        let secretLetterCounts = {};
+        for (let char of SECRET_WORD) {
+            secretLetterCounts[char] = (secretLetterCounts[char] || 0) + 1;
+        }
+
+        const rowStatuses = new Array(WORD_LENGTH).fill("absent");
+
+        // 1. Primo Passaggio: Identificazione Verdi (Esatti)
+        for (let i = 0; i < WORD_LENGTH; i++) {
+            if (guess[i] === SECRET_WORD[i]) {
+                rowStatuses[i] = "correct";
+                secretLetterCounts[guess[i]]--;
+            }
+        }
+
+        // 2. Secondo Passaggio: Identificazione Gialli (Presenti)
+        for (let i = 0; i < WORD_LENGTH; i++) {
+            if (rowStatuses[i] !== "correct") {
+                if (secretLetterCounts[guess[i]] && secretLetterCounts[guess[i]] > 0) {
+                    rowStatuses[i] = "present";
+                    secretLetterCounts[guess[i]]--;
+                }
+            }
+        }
+
+        // Applica animazioni e colori alle caselle
+        for (let i = 0; i < WORD_LENGTH; i++) {
+            const tile = tiles[startRowIndex + i];
+            if (tile) {
+                tile.setAttribute("data-state", rowStatuses[i]);
+            }
+        }
+
+        // Calcolo Punti Parziali della riga tramite modulo SCORING
+        if (window.SCORING) {
+            const rowPoints = window.SCORING.calculateRowPoints(rowStatuses, WORD_LENGTH);
+            updateTotalScore(rowPoints);
+        }
+
+        // Controllo Esiti del tentativo
+        if (guess === SECRET_WORD) {
+            handleVictory();
+        } else {
+            currentAttempt++;
+            if (keyboardInputTrigger) keyboardInputTrigger.value = "";
+            currentTileIndex = 0;
+            
+            // Disegna parte dell'impiccato
+            drawHangman(currentAttempt);
+
+            if (currentAttempt >= MAX_ATTEMPTS) {
+                handleLoss(false);
+            }
+        }
+    }
+
+    // --- GESTIONE VITTORIA E SCONFITTA ---
+    function handleVictory() {
+        isGameOver = true;
+        clearInterval(timerInterval);
+        
+        currentStreak++;
+        localStorage.setItem('wordman_current_streak', currentStreak);
+        if (currentStreakEl) currentStreakEl.innerText = currentStreak;
+
+        let bonus = 40;
+        if (window.SCORING) {
+            bonus = window.SCORING.calculateVictoryBonus(currentAttempt, WORD_LENGTH, (GAME_MODE === 'timer'), timeLeft);
+        }
+        updateTotalScore(bonus);
+
+        showMessage(`🎉 CORRETTO! +${bonus} Punti Bonus!`);
+        appendWordToCalderone(SECRET_WORD, true);
+
+        // Verifica ed Aggiorna Record Personale
+        checkAndSavePersonalBest();
+
+        if (restartBtn) {
+            restartBtn.innerText = "Continua Streak";
+            restartBtn.classList.remove("hidden");
+        }
+    }
+
+    function handleLoss(isTimeOut = false) {
+        isGameOver = true;
+        clearInterval(timerInterval);
+
+        if (isTimeOut) {
+            showMessage(`⏰ TEMPO SCADUTO! La parola era: ${SECRET_WORD}`);
+            drawHangman(6); // Completa l'impiccato per timeout
+        } else {
+            showMessage(`💥 GAME OVER! La parola era: ${SECRET_WORD}`);
+        }
+
+        appendWordToCalderone(SECRET_WORD, false);
+
+        // Verifica Record Personale finale
+        checkAndSavePersonalBest();
+
+        // Resetta lo streak locale della sessione per la prossima partita
+        currentStreak = 0;
+        localStorage.setItem('wordman_current_streak', 0);
+        if (currentStreakEl) currentStreakEl.innerText = "0";
+
+        // Cancella i punteggi cumulativi accumulati finora
+        localStorage.removeItem('wordman_total_score');
+
+        // Mostra il modulo per salvare il record globale su internet
+        if (saveContainer && totalScore > 0) {
+            saveContainer.classList.remove("hidden");
+        }
+
+        if (restartBtn) {
+            restartBtn.innerText = "Ricomincia da 0";
+            restartBtn.classList.remove("hidden");
+        }
+    }
+
+    // Al click sul pulsante Continua / Riavvia
+    if (restartBtn) {
+        restartBtn.addEventListener("click", () => {
+            if (currentStreak === 0) {
+                totalScore = 0;
+                if (currentScoreEl) currentScoreEl.innerText = "0";
+                if (wordsListEl) wordsListEl.innerHTML = "";
+            }
+            if (keyboardInputTrigger) keyboardInputTrigger.value = "";
+            initGame();
+        });
+    }
+
+    // --- HELPER FUNZIONALI ---
+    function updateTotalScore(amount) {
+        totalScore += amount;
+        localStorage.setItem('wordman_total_score', totalScore);
+        if (currentScoreEl) currentScoreEl.innerText = totalScore;
+    }
+
+    function appendWordToCalderone(word, isSuccess) {
+        if (!wordsListEl) return;
+        const li = document.createElement("li");
+        li.style.color = isSuccess ? "#538d4e" : "#ff4757";
+        li.style.fontWeight = "bold";
+        li.innerText = `${isSuccess ? '🧪' : '💀'} ${word} (${GAME_MODE.toUpperCase()} - ${WORD_LENGTH}L)`;
+        wordsListEl.appendChild(li);
+    }
+
+    function checkAndSavePersonalBest() {
+        if (totalScore > personalBest) {
+            personalBest = totalScore;
+            localStorage.setItem(`wordman_pb_${GAME_MODE}_${WORD_LENGTH}`, personalBest);
+            updatePersonalBestWidget();
+            console.log(`Nuovo PB Locale salvato per ${GAME_MODE} ${WORD_LENGTH}L: ${personalBest}`);
+        }
+    }
+
+    function updatePersonalBestWidget() {
+        const pbValEl = document.getElementById("pb-value");
+        if (pbValEl) {
+            pbValEl.innerText = personalBest;
+        }
+    }
+
+    async function updateLiveGlobalRank() {
+        const rankWidget = document.getElementById("live-rank-value");
+        if (!rankWidget || !window.ONLINE_LEADERBOARD) return;
+
+        const data = await window.ONLINE_LEADERBOARD.getTopRecords();
+        if (data && data.currentUserRow) {
+            rankWidget.innerText = `${data.currentUserRow.rank}° nel Mondo`;
+        } else {
+            rankWidget.innerText = "Nessun Record";
+        }
+    }
+
+    // --- SALVATAGGIO CLASSIFICA ONLINE (VERSIONE ROBUSTA SENZA BLOCCHI) ---
+    const btnSubmitGlobal = document.getElementById("btn-submit-global");
+    if (btnSubmitGlobal) {
+        btnSubmitGlobal.addEventListener("click", async () => {
+            const usernameInput = document.getElementById("username");
+            if (!usernameInput) return;
+
+            const username = usernameInput.value.trim().toUpperCase();
+            if (!username) {
+                showMessage("❌ Inserisci un nome valido!");
+                return;
+            }
+
+            // Cambia interfaccia visiva in stato caricamento
+            btnSubmitGlobal.innerText = "INVIO...";
+            btnSubmitGlobal.disabled = true;
+
+            if (window.ONLINE_LEADERBOARD) {
+                try {
+                    // Esegue la chiamata asincrona verso Supabase
+                    const res = await window.ONLINE_LEADERBOARD.submitScore(username, totalScore);
+                    
+                    if (res) {
+                        showMessage(`🌍 Record registrato con successo!`);
+                        await updateLiveGlobalRank(); // Aggiorna al volo la posizione
+                        
+                        // Reindirizza l'utente alla pagina della classifica globale dopo un breve delay
+                        setTimeout(() => { 
+                            window.location.href = "leaderboard.html"; 
+                        }, 1200);
+                    } else {
+                        // Caso in cui la fetch ha risposto ma con stato di fallimento server (!response.ok)
+                        showMessage("❌ Errore server classifica. Riprova più tardi.");
+                        btnSubmitGlobal.innerText = "Invia Record";
+                        btnSubmitGlobal.disabled = false;
+                    }
+                } catch (err) {
+                    // Cattura errori critici improvvisi di assenza di rete o timeout
+                    console.error("Errore di connessione alla rete:", err);
+                    showMessage("❌ Errore di rete. Controlla la tua connessione.");
+                    btnSubmitGlobal.innerText = "Invia Record";
+                    btnSubmitGlobal.disabled = false;
+                }
+            } else {
+                showMessage("❌ Modulo classifica online non caricato.");
+                btnSubmitGlobal.innerText = "Invia Record";
+                btnSubmitGlobal.disabled = false;
+            }
+        });
+    }
+
+    // --- MOTORE GRAFICO CANVAS (IMPICCATO ARCADE) ---
+    const canvas = document.getElementById("hangman");
+    const ctx = canvas ? canvas.getContext("2d") : null;
+
+    function resetCanvas() {
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "#ffffff";
+        
+        // Base fissa strutturale
+        ctx.beginPath();
+        ctx.moveTo(10, 230); ctx.lineTo(190, 230);
+        ctx.moveTo(30, 230); ctx.lineTo(30, 20);
+        ctx.lineTo(120, 20);
+        ctx.lineTo(120, 50);
+        ctx.stroke();
+    }
+
+    function drawHangman(step) {
+        if (!ctx) return;
+        ctx.beginPath();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = "#ff4757"; // Elementi dell'omino in rosso Arcade
+
+        switch(step) {
+            case 1: ctx.arc(120, 70, 20, 0, Math.PI * 2); break; // Testa
+            case 2: ctx.moveTo(120, 90); ctx.lineTo(120, 160); break; // Corpo
+            case 3: ctx.moveTo(120, 110); ctx.lineTo(90, 130); break; // Braccio sx
+            case 4: ctx.moveTo(120, 110); ctx.lineTo(150, 130); break; // Braccio dx
+            case 5: ctx.moveTo(120, 160); ctx.lineTo(95, 210); break; // Gamba sx
+            case 6: ctx.moveTo(120, 160); ctx.lineTo(145, 210); break; // Gamba dx
+        }
+        ctx.stroke();
+    }
+
+    function showMessage(text) { 
+        if (messageEl) messageEl.innerText = text; 
+    }
 });

@@ -11,20 +11,29 @@
 <body>
     
     <div class="top-bar-container" style="display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 600px; margin: 0 auto 15px auto; padding: 0 10px;">
-        <button onclick="window.location.href='index.html'" style="font-family: 'VT323', monospace; background: #3a3a3c; color: #fff; border: 2px solid #fff; padding: 8px 15px; font-size: 1.6rem; text-transform: uppercase; cursor: pointer; box-shadow: 4px 4px 0px #000; font-weight: bold;">⬅️ MENU</button>
+        <button onclick="window.location.href='index.html'" style="font-family: 'VT323', monospace; background: #3a3a3c; color: #fff; border: 2px solid #fff; padding: 8px 15px; font-size: 1.5rem; text-transform: uppercase; cursor: pointer; box-shadow: 4px 4px 0px #000; font-weight: bold; max-width: 140px; margin: 0;">⬅️ MENU</button>
         
-        <button id="btn-toggle-debug" style="background: transparent; border: 1px solid #555; color: #555; font-size: 0.8rem; cursor: pointer; padding: 2px 5px; opacity: 0.5;">Debug</button>
+        <div id="live-user-stats" style="font-family: 'VT323', monospace; font-size: 1.4rem; text-align: right; color: #ffffff; line-height: 1.3;">
+            <div>🏆 RECORD: <span id="top-personal-best" style="color: #ffd700; font-weight: bold;">0</span></div>
+            <div>📊 RANK: <span id="top-global-rank" style="color: #60a5fa; font-weight: bold;">--</span></div>
+        </div>
     </div>
-   
-    <div id="game-container" class="hidden">
-        <div id="game-layout-wrapper" style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; align-items: flex-start; width: 100%; max-width: 800px; margin: 0 auto;">
+       
+    <div id="game-container">
+        
+        <div id="timer-wrapper" class="hidden">
+            <div id="timer-bar"></div>
+            <div id="timer-text">60s</div>
+        </div>
+
+        <div id="game-layout-wrapper">
             
             <div id="left-column">
                 <div class="calderone-container">
-                    <h2>🧪 Il Calderone</h2>
-                    <div class="score-total">Punti Sessione: <span id="current-score">0</span></div>
-                    <div class="streak-total">Serie Attuale: <span id="current-streak">0</span></div>
-                    <ul id="words-list" style="list-style: none; margin-top: 10px;"></ul>
+                    <h2 style="color: #f97316; font-size: 2rem;">🧪 Il Calderone</h2>
+                    <div class="score-total">Punti: <span id="current-score" style="color:#538d4e; font-weight: bold;">0</span></div>
+                    <div class="streak-total">Serie: <span id="current-streak" style="color:#b59f3b; font-weight: bold;">0</span></div>
+                    <ul id="words-list"></ul>
                 </div>
             </div>
 
@@ -37,25 +46,18 @@
     </div>
 
     <div id="global-save-container" class="hidden" style="background: #1e1e1f; padding: 20px; border: 3px solid #b59f3b; border-radius: 8px; text-align: center; max-width: 360px; margin: 20px auto; box-shadow: 6px 6px 0px #000;">
-        <p style="margin-bottom: 12px; color: #ffd700; font-weight: bold; font-size: 2rem; text-transform: uppercase; font-family: 'VT323', monospace; letter-spacing: 1px;">🏆 RECORD MONDIALE!</p>
-        <input type="text" id="username" name="username" autocomplete="on" placeholder="TUO NOME" maxlength="10" style="font-family: 'VT323', monospace; padding: 10px; width: 80%; border: 2px solid #555; background: #111; color: white; text-align: center; text-transform: uppercase; font-size: 1.5rem; margin-bottom: 15px;">
+        <p style="margin-bottom: 12px; color: #ffd700; font-weight: bold; font-size: 1.8rem; text-transform: uppercase; font-family: 'VT323', monospace; letter-spacing: 1px;">🏆 RECORD MONDIALE!</p>
+        <input type="text" id="leaderboard-username" name="username" autocomplete="on" placeholder="TUO NOME" maxlength="10" style="font-family: 'VT323', monospace; padding: 10px; width: 80%; border: 2px solid #555; background: #111; color: white; text-align: center; text-transform: uppercase; font-size: 1.5rem; margin-bottom: 15px;">
         <br>
-        <button id="btn-submit-global" style="padding: 10px 20px; font-size: 1.6rem; font-family: 'VT323', monospace; background: #538d4e; color: #ffffff; border: 2px solid #ffffff; cursor: pointer; text-transform: uppercase; font-weight: bold; box-shadow: 4px 4px 0px #000;">INVIA RECORD</button>
+        <button id="btn-submit-global" style="padding: 10px 20px; font-size: 1.5rem; font-family: 'VT323', monospace; background: #538d4e; color: #ffffff; border: 2px solid #ffffff; cursor: pointer; text-transform: uppercase; font-weight: bold; display: inline-block; width: auto; box-shadow: 4px 4px 0px #000;">Invia Record</button>
     </div>
 
-    <div id="message" style="font-family: 'VT323', monospace; font-size: 1.8rem; margin-top: 15px; min-height: 30px;"></div>
-    
-    <button id="restart-btn" class="hidden" style="padding: 10px 20px; font-size: 1.6rem; font-family: 'VT323', monospace; background: #538d4e; color: #ffffff; border: 2px solid #ffffff; cursor: pointer; text-transform: uppercase; font-weight: bold; box-shadow: 4px 4px 0px #000; margin-top: 15px;">CONTINUA ➡️</button>
+    <div id="message"></div>
+    <button id="restart-btn" class="hidden main-btn" style="max-width: 300px; padding: 10px 20px; font-size: 1.6rem; font-family: 'VT323', monospace; background: #538d4e; color: #ffffff; border: 2px solid #ffffff; cursor: pointer; text-transform: uppercase; font-weight: bold; box-shadow: 4px 4px 0px #000; margin-top: 15px;">Continua ➡️</button>
 
-    <div class="keyboard">
-        <div class="keyboard-row" id="row-0"></div>
-        <div class="keyboard-row" id="row-1"></div>
-        <div class="keyboard-row" id="row-2"></div>
-    </div>
-
-    <script src="words.js"></script>
-    <script src="scoring.js"></script>
-    <script src="online-leaderboard.js"></script>
-    <script src="game.js" defer></script>
+    <script src="words.js?v=1.3"></script>
+    <script src="scoring.js?v=1.3"></script>
+    <script src="online-leaderboard.js?v=1.3"></script>
+    <script src="game.js?v=1.3" defer></script>
 </body>
 </html>

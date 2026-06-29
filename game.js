@@ -216,7 +216,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 7. VERIFICA RIGA CON INTEGRATO SISTEMA DI DEBUG INTERCETTO E RECORD PERSONALE
     function checkRow() {
-        // --- FUNZIONE DI DEBUG APPLICATA A TUTTE LE MODALITÀ ---
         let currentTypedString = "";
         const startIndex = currentAttempt * WORD_LENGTH;
         for (let i = 0; i < currentTile; i++) {
@@ -235,7 +234,6 @@ document.addEventListener('DOMContentLoaded', () => {
             mobileInput.value = "X"; 
             return; 
         }
-        // ------------------------------------------------------
 
         if (currentTile !== WORD_LENGTH) {
             showMessage(`Inserisci ${WORD_LENGTH} lettere!`); 
@@ -267,7 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // LETTURA DIRETTA DELLA VARIABILE GLOBALE SCORING
         let rowPoints = 0;
         if (typeof SCORING !== "undefined" && typeof SCORING.calculateRowPoints === "function") {
             rowPoints = SCORING.calculateRowPoints(tileStatuses, WORD_LENGTH);
@@ -281,7 +278,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         totalScore += rowPoints;
 
-        // Controllo e aggiornamento real-time del Record Personale
         if (totalScore > personalBest) {
             personalBest = totalScore;
             localStorage.setItem('wordman_personal_best', personalBest);
@@ -305,7 +301,6 @@ document.addEventListener('DOMContentLoaded', () => {
             totalScore += victoryBonus;
             streakCount++; 
 
-            // Ricontrollo Record dopo il bonus vittoria
             if (totalScore > personalBest) {
                 personalBest = totalScore;
                 localStorage.setItem('wordman_personal_best', personalBest);
@@ -370,7 +365,8 @@ document.addEventListener('DOMContentLoaded', () => {
         restartBtn.classList.remove("hidden");
         if (totalScore > 0) {
             globalSaveContainer.classList.remove("hidden");
-            document.getElementById("leaderboard-username").focus();
+            const userInp = document.getElementById("leaderboard-username");
+            if (userInp) userInp.focus();
         } else {
             resetSessionData();
         }
@@ -406,7 +402,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnSubmitGlobal = document.getElementById("btn-submit-global");
     if (btnSubmitGlobal) {
         btnSubmitGlobal.addEventListener("click", async () => {
-            const username = document.getElementById("leaderboard-username").value.trim().toUpperCase();
+            const userInp = document.getElementById("leaderboard-username");
+            if (!userInp) return;
+            const username = userInp.value.trim().toUpperCase();
             if (!username) return;
 
             btnSubmitGlobal.innerText = "INVIO...";
@@ -416,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await window.ONLINE_LEADERBOARD.submitScore(username, totalScore);
                 if (res) {
                     showMessage(`🌍 Record registrato!`);
-                    await updateLiveGlobalRank(); // Rinfresca istantaneamente il widget prima del redirect
+                    await updateLiveGlobalRank(); 
                     setTimeout(() => { window.location.href = "leaderboard.html"; }, 1200);
                 } else {
                     showMessage(`❌ Errore di rete.`);
